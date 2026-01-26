@@ -10,67 +10,62 @@ class DatabaseSeeder extends Seeder
 {
     public function run()
     {
+
         // === 1. BUAT DATA MAKANAN ===
 
-        // Produk: Nasi Goreng
-        $nasgor = Product::create([
-            'name' => 'Nasi Goreng',
+        // Produk: Savory Taste Sandwich
+        $savory = Product::create([
+            'name' => 'Savory Taste Sandwich',
             'type' => 'food',
             'is_available' => true
         ]);
-        // Varian Nasi Goreng
-        ProductVariant::create(['product_id' => $nasgor->id, 'name' => 'Biasa', 'price' => 15000]);
-        ProductVariant::create(['product_id' => $nasgor->id, 'name' => 'Spesial (Telur)', 'price' => 18000]);
-        ProductVariant::create(['product_id' => $nasgor->id, 'name' => 'Seafood', 'price' => 22000]);
+        // Varian Savory Taste Sandwich
+        ProductVariant::create(['product_id' => $savory->id, 'name' => 'Original', 'price' => 25000]);
 
-        // Produk: Sosis Bakar
-        $sosis = Product::create([
-            'name' => 'Sosis Bakar',
+        // Produk: Fried Sandwich
+        $sandwich = Product::create([
+            'name' => 'Fried Sandwich',
             'type' => 'food',
             'is_available' => true
         ]);
-        // Varian Sosis
-        ProductVariant::create(['product_id' => $sosis->id, 'name' => 'Original', 'price' => 10000]);
-        ProductVariant::create(['product_id' => $sosis->id, 'name' => 'Pedas BBQ', 'price' => 12000]);
-        ProductVariant::create(['product_id' => $sosis->id, 'name' => 'Keju Meleleh', 'price' => 13000]);
+        // Varian Fried Sandwich
+        ProductVariant::create(['product_id' => $sandwich->id, 'name' => 'Chocolate', 'price' => 25000]);
+        ProductVariant::create(['product_id' => $sandwich->id, 'name' => 'Matcha', 'price' => 25000]);
+        ProductVariant::create(['product_id' => $sandwich->id, 'name' => 'Strawberry', 'price' => 25000]);
 
-        // Produk: Dimsum
-        $dimsum = Product::create([
-            'name' => 'Dimsum',
+        // Produk: stik kentang
+        $kentang = Product::create([
+            'name' => 'Stik Kentang',
             'type' => 'food',
             'is_available' => true
         ]);
-        ProductVariant::create(['product_id' => $dimsum->id, 'name' => 'Ayam (Isi 4)', 'price' => 15000]);
-        ProductVariant::create(['product_id' => $dimsum->id, 'name' => 'Udang (Isi 4)', 'price' => 18000]);
+        ProductVariant::create(['product_id' => $kentang->id, 'name' => 'Original', 'price' => 22000]);
 
 
         // === 2. BUAT DATA MINUMAN ===
 
-        // Produk: Es Teh
-        $esteh = Product::create([
-            'name' => 'Es Teh',
+        // Produk: Goguma Latte
+        $goguma = Product::create([
+            'name' => 'Goguma Latte',
             'type' => 'drink', // Penting: Type Drink
             'is_available' => true
         ]);
-        ProductVariant::create(['product_id' => $esteh->id, 'name' => 'Manis', 'price' => 5000]);
-        ProductVariant::create(['product_id' => $esteh->id, 'name' => 'Tawar', 'price' => 3000]);
-        ProductVariant::create(['product_id' => $esteh->id, 'name' => 'Lemon Tea', 'price' => 7000]);
+        ProductVariant::create(['product_id' => $goguma->id, 'name' => 'Original', 'price' => 25000]);
 
-        // Produk: Kopi
-        $kopi = Product::create([
-            'name' => 'Kopi',
+        // Produk: strawberry
+        $strawberry = Product::create([
+            'name' => 'Korean Milk Strawberry',
             'type' => 'drink',
             'is_available' => true
         ]);
-        ProductVariant::create(['product_id' => $kopi->id, 'name' => 'Hitam Panas', 'price' => 10000]);
-        ProductVariant::create(['product_id' => $kopi->id, 'name' => 'Susu Dingin', 'price' => 12000]);
+        ProductVariant::create(['product_id' => $strawberry->id, 'name' => 'Original', 'price' => 25000]);
 
-        // Produk: Mineral
-        $air = Product::create([
-            'name' => 'Air Mineral',
+        // Produk: Banana Pudding
+        $puding = Product::create([
+            'name' => 'Banana Pudding',
             'type' => 'drink',
             'is_available' => true
         ]);
-        ProductVariant::create(['product_id' => $air->id, 'name' => 'Botol 600ml', 'price' => 4000]);
+        ProductVariant::create(['product_id' => $puding->id, 'name' => 'Original', 'price' => 37000]);
     }
 }
