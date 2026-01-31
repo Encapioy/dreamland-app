@@ -4,7 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use App\Models\Product;
-use App\Models\ProductVariant; // Pastikan ini ada
+use App\Models\ProductVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
@@ -20,23 +20,24 @@ class CashierIndex extends Component
     public $cart = [];
     public $queueNumber;
 
-    // UPDATE: Tambahan Data Pemesan
+    // Data Pemesan
     public $customerName = '';
     public $customerPhone = '';
+    public $customerLocation = '';
+    public $customerCategory = 'santri';
 
     // Data Modal
     public $isModalOpen = false;
     public $selectedProduct = null;
     public $selectedVariantId = null;
     public $note = '';
+    public $quantity = 1;
 
     // History
     public $isHistoryOpen = false;
     public $orderHistory = [];
 
-    public $customerLocation = '';
-    public $customerCategory = 'santri';
-
+    // Statistik
     public $isStatsOpen = false;
     public $statsData = [];
 
@@ -47,15 +48,12 @@ class CashierIndex extends Component
 
     public function loadProducts()
     {
-        // Ambil produk beserta variannya
-        // Kita tidak filter is_available produk induk lagi, tapi nanti cek varian
         $products = Product::with('variants')->get();
-
         $this->products_food = $products->where('type', 'food');
         $this->products_drink = $products->where('type', 'drink');
     }
 
-    // --- LOGIC STOK VARIAN (BARU) ---
+    // --- LOGIC STOK VARIAN ---
     public function toggleVariantStock($variantId)
     {
         $variant = ProductVariant::find($variantId);
@@ -63,12 +61,9 @@ class CashierIndex extends Component
             $variant->is_available = !$variant->is_available;
             $variant->save();
 
-            // Reload agar tampilan terupdate
-            // Jika modal sedang terbuka, kita harus refresh data produk yang dipilih juga
             if ($this->selectedProduct && $this->selectedProduct->id == $variant->product_id) {
                 $this->selectedProduct = Product::with('variants')->find($this->selectedProduct->id);
             }
-
             $this->loadProducts();
         }
     }
@@ -77,10 +72,9 @@ class CashierIndex extends Component
     public function openModal($productId)
     {
         $this->selectedProduct = Product::with('variants')->find($productId);
+        $this->quantity = 1;
 
-        // Cari varian pertama yang AVAILABLE untuk dijadikan default
         $firstAvailableVariant = $this->selectedProduct->variants->where('is_available', true)->first();
-
         $this->selectedVariantId = $firstAvailableVariant ? $firstAvailableVariant->id : null;
         $this->note = '';
         $this->isModalOpen = true;
@@ -92,15 +86,25 @@ class CashierIndex extends Component
         $this->selectedProduct = null;
     }
 
+    public function incrementQty()
+    {
+        $this->quantity++;
+    }
+
+    public function decrementQty()
+    {
+        if ($this->quantity > 1) {
+            $this->quantity--;
+        }
+    }
+
     // --- CART ---
     public function addToCart()
     {
-        if (!$this->selectedVariantId)
-            return;
+        if (!$this->selectedVariantId) return;
 
         $variant = ProductVariant::find($this->selectedVariantId);
 
-        // Cek lagi apakah stok tersedia (takutnya dimatikan saat modal terbuka)
         if (!$variant->is_available) {
             session()->flash('error_modal', 'Maaf, varian ini baru saja habis.');
             return;
@@ -111,7 +115,7 @@ class CashierIndex extends Component
             'product_name' => $this->selectedProduct->name,
             'variant_name' => $variant->name,
             'price' => $variant->price,
-            'quantity' => 1,
+            'quantity' => $this->quantity,
             'note' => $this->note,
         ];
 
@@ -129,11 +133,10 @@ class CashierIndex extends Component
         return collect($this->cart)->sum(fn($item) => $item['price'] * $item['quantity']);
     }
 
-    // --- CHECKOUT (UPDATE) ---
+    // --- CHECKOUT ---
     public function checkout()
     {
         $this->validate([
-            // UPDATE: Tambahkan min:0 dan max:100
             'queueNumber' => 'required|numeric|min:0|max:100',
             'customerName' => 'required|string|min:3',
             'cart' => 'required|array|min:1',
@@ -143,8 +146,8 @@ class CashierIndex extends Component
 
         $order = Order::create([
             'queue_number' => $this->queueNumber,
-            'customer_name' => $this->customerName, // Simpan Nama
-            'customer_phone' => $this->customerPhone, // Simpan HP
+            'customer_name' => $this->customerName,
+            'customer_phone' => $this->customerPhone,
             'location' => $this->customerLocation,
             'customer_category' => $this->customerCategory,
             'status' => 'paid',
@@ -160,43 +163,34 @@ class CashierIndex extends Component
             ]);
         }
 
-        // Reset Form Lengkap
         $this->reset(['cart', 'queueNumber', 'customerName', 'customerPhone', 'customerLocation', 'customerCategory']);
         $this->customerCategory = 'santri';
         session()->flash('message', 'Pesanan #' . $order->queue_number . ' Berhasil Disimpan!');
     }
 
-    // --- HISTORY LOGIC (SAMA SEPERTI SEBELUMNYA) ---
+    // --- HISTORY LOGIC (DIPERBAIKI: Mengambil SEMUA data) ---
     public function openHistory()
     {
-        // Eager load items agar bisa cek status per item
+        // UPDATE: Menghapus whereDate dan take() agar menampilkan semua riwayat
         $this->orderHistory = Order::with(['items.variant.product'])
-            ->whereDate('created_at', Carbon::today()) // Hanya hari ini
-            ->latest()
-            ->take(20)
-            ->get();
+            ->latest() // Urutkan dari yang terbaru
+            ->get();   // Ambil SEMUA data
 
         $this->isHistoryOpen = true;
     }
 
-    // Helper Status Pesanan
-    // (Bisa dipanggil di blade via $this)
     public function getOrderStatus($order)
     {
         $totalItems = $order->items->count();
-        if ($totalItems == 0)
-            return 'Kosong';
+        if ($totalItems == 0) return 'Kosong';
 
         $servedCount = $order->items->where('status', 'served')->count();
         $readyCount = $order->items->where('status', 'ready')->count();
 
-        if ($servedCount == $totalItems)
-            return 'Selesai'; // Semua diantar
-        if ($readyCount + $servedCount == $totalItems)
-            return 'Siap Diantar'; // Semua dimasak (atau sebagian udah diantar)
-        if ($readyCount > 0 || $servedCount > 0)
-            return 'Sedang Disiapkan'; // Parsial
-        return 'Menunggu Dapur'; // Masih queued semua
+        if ($servedCount == $totalItems) return 'Selesai';
+        if ($readyCount + $servedCount == $totalItems) return 'Siap Diantar';
+        if ($readyCount > 0 || $servedCount > 0) return 'Sedang Disiapkan';
+        return 'Menunggu Dapur';
     }
 
     public function closeHistory()
@@ -213,39 +207,36 @@ class CashierIndex extends Component
         }
     }
 
-    // --- LOGIC STATISTIK ---
+    // --- LOGIC STATISTIK (DIPERBAIKI: Data Keseluruhan / All Time) ---
     public function openStats()
     {
-        $today = Carbon::today();
-
-
-        // 1. Total Pendapatan
+        // 1. Total Pendapatan (Semua Waktu)
         $omzetAllTime = OrderItem::with('variant')
             ->get()
             ->sum(function ($item) {
                 return $item->quantity * $item->variant->price;
             });
 
-        // 2. Total Pendapatan
+        // 2. Total Transaksi (Semua Waktu)
         $totalOrdersAllTime = Order::count();
 
-        // 3. Counter Status Item (Hari Ini)
-        $statusCounts = OrderItem::whereDate('created_at', $today)
-            ->select('status', DB::raw('count(*) as total'))
+        // 3. Counter Status Item (Semua Waktu - DIPERBAIKI)
+        // Menghapus filter whereDate agar menghitung status dari semua order yang pernah masuk
+        $statusCounts = OrderItem::select('status', DB::raw('count(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status')
             ->toArray();
 
-        // 4. Top Penjualan Produk (Hari Ini)
-        $topProducts = OrderItem::whereDate('created_at', $today)
-            ->with('variant.product')
+        // 4. Top Penjualan Produk (Semua Waktu - DIPERBAIKI)
+        // Menghapus filter whereDate agar ranking berdasarkan total penjualan selamanya
+        $topProducts = OrderItem::with('variant.product')
             ->get()
             ->groupBy('variant.product.name')
             ->map(function ($rows) {
                 return $rows->sum('quantity');
             })
             ->sortDesc()
-            ->take(10); // Top 10
+            ->take(10); // Tetap ambil Top 10 tertinggi
 
         $this->statsData = [
             'omzet_all' => $omzetAllTime,
